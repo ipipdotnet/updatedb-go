@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -47,8 +48,7 @@ func Custom(token string, name string, dstPath string) error {
 		}
 	}
 
-	fn := filepath.Join(os.TempDir(), name)
-	f, e := os.Create(fn)
+	f, e := ioutil.TempFile(dstPath, "ipdb-")
 	if e != nil {
 		return e
 	}
@@ -56,6 +56,7 @@ func Custom(token string, name string, dstPath string) error {
 	if e != nil {
 		return e
 	}
+	fn := f.Name()
 	f.Close()
 
 	all, e := ioutil.ReadFile(fn)
@@ -73,27 +74,41 @@ func Custom(token string, name string, dstPath string) error {
 		return fmt.Errorf("ETag diff")
 	}
 
-	Z := archiver.NewZip()
 	var dst string
-	e = Z.Walk(fn, func(f archiver.File) error {
 
-		if f.IsDir() {
+	// : attachment; filename="idc_list.ipdb"
+	g := regexp.MustCompile(`filename="([^"]+)"`).FindAllStringSubmatch(res.Header.Get("Content-Disposition"), -1)
+	if len(g) < 1 {
+		fmt.Println(g)
+		return fmt.Errorf("download attachment failed")
+	}
+
+	name = g[0][1]
+
+	if strings.HasSuffix(name, ".zip") {
+		Z := archiver.NewZip()
+		e = Z.Walk(fn, func(f archiver.File) error {
+
+			if f.IsDir() {
+				return nil
+			}
+			defer f.Close()
+			dst = filepath.Join(dstPath, f.Name())
+			fmt.Println(dst)
+			w, e := os.Create(dst)
+			if e != nil {
+				return e
+			}
+			defer w.Close()
+			_, e = io.Copy(w, f)
+			if e != nil {
+				return e
+			}
 			return nil
-		}
-		defer f.Close()
-		dst = filepath.Join(dstPath, f.Name())
-		fmt.Println(dst)
-		w, e := os.Create(dst)
-		if e != nil {
-			return e
-		}
-		defer w.Close()
-		_, e = io.Copy(w, f)
-		if e != nil {
-			return e
-		}
-		return nil
-	})
+		})
+	} else {
+		return os.Rename(fn, filepath.Join(dstPath, name))
+	}
 
 	return e
 }
