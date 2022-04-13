@@ -12,9 +12,9 @@ func main() {
 	var name string
 	var dstPath string
 
-	pflag.StringVar(&dstPath, "path", "d:/tmp", "--path=/path/dir/")
+	pflag.StringVar(&dstPath, "path", "", "--path=/path/dir/")
 	pflag.StringVar(&name, "name", "", "--name")
-	pflag.StringVar(&token, "token", "4b53024029758e53e3ab119f956ef41ae66acc6a", "--token=")
+	pflag.StringVar(&token, "token", "", "--token=")
 	pflag.Parse()
 
 	e := download.Custom(token, name, dstPath)
