@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/mholt/archiver"
 	"io"
-	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -48,7 +48,7 @@ func Custom(token string, name string, dstPath string) error {
 		}
 	}
 
-	f, e := ioutil.TempFile(dstPath, "ipdb-")
+	f, e := os.CreateTemp(dstPath, "ipdb-")
 	if e != nil {
 		return e
 	}
@@ -59,7 +59,7 @@ func Custom(token string, name string, dstPath string) error {
 	fn := f.Name()
 	f.Close()
 
-	all, e := ioutil.ReadFile(fn)
+	all, e := os.ReadFile(fn)
 	if e != nil {
 		return e
 	}
@@ -94,18 +94,21 @@ func Custom(token string, name string, dstPath string) error {
 			}
 			defer f.Close()
 			dst = filepath.Join(dstPath, f.Name())
-			fmt.Println(dst)
 			w, e := os.Create(dst)
 			if e != nil {
+				log.Println(e)
 				return e
 			}
 			defer w.Close()
 			_, e = io.Copy(w, f)
 			if e != nil {
+				log.Println(e)
 				return e
 			}
 			return nil
 		})
+
+		os.Remove(fn) // 删除临时zip包
 	} else {
 		return os.Rename(fn, filepath.Join(dstPath, name))
 	}
